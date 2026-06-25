@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ФизКомпас — интерактивный курс физики</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ===== Переменные ===== */
+        :root {
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #0f172a;
+            --border: #cbd5e1;
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --completed: #22c55e;
+            --watched: #f59e0b;
+            --new: #94a3b8;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f1f5f9;
+            --border: #334155;
+            --shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: background 0.3s, color 0.3s;
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .app {
+            max-width: 1300px;
+            margin: 0 auto;
+            flex: 1;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 12px 0 20px;
+            border-bottom: 2px solid var(--border);
+        }
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-light);
+        }
+        .logo span { color: var(--text); }
+        .header-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .btn {
+            background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+        .btn:hover { background: var(--primary-light); color: #fff; border-color: var(--primary-light); }
+
+        /* ===== Tabs ===== */
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin: 20px 0 24px;
+            flex-wrap: wrap;
+            background: var(--card);
+            padding: 6px;
+            border-radius: 40px;
+            border: 1px solid var(--border);
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: var(--text);
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.95rem;
+        }
+        .tab-btn.active { background: var(--primary); color: #fff; }
+        .tab-btn:hover:not(.active) { background: var(--border); }
+
+        .tab-content { display: none; animation: fade 0.25s; }
+        .tab-content.active { display: block; }
+        @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ===== Фильтры ===== */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .filters input, .filters select {
+            padding: 8px 14px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            font-size: 0.9rem;
+            flex: 1 1 180px;
+        }
+
+        /* ===== Сетка уроков ===== */
+        .lesson-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        .lesson-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--new);
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .lesson-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -8px rgba(0,0,0,0.15); }
+        .lesson-card .title { font-weight: 600; font-size: 1rem; }
+        .lesson-card .meta { display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.7; }
+        .lesson-card .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+        .lesson-card .actions button {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--text);
+            transition: 0.15s;
+        }
+        .lesson-card .actions button:hover { background: var(--primary-light); color: #fff; }
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            background: var(--new);
+            color: #fff;
+            align-self: flex-start;
+        }
+        .status-badge.completed { background: var(--completed); }
+        .status-badge.watched { background: var(--watched); }
+
+        .lesson-thumb {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            margin-top: 4px;
+            position: relative;
+        }
+        .lesson-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.2s;
+        }
+        .lesson-thumb:hover img { transform: scale(1.02); }
+        .lesson-thumb .play-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            color: rgba(255,255,255,0.8);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+
+        /* ===== Календарь ===== */
+        .calendar-container {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+        .calendar-grid .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--bg);
+            cursor: pointer;
+            transition: 0.15s;
+            font-size: 0.9rem;
+            position: relative;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .calendar-grid .day:hover { background: var(--primary-light); color: #fff; }
+        .calendar-grid .day.has-plan::after {
+            content: '';
+            position: absolute;
+            bottom: 4px;
+            width: 6px;
+            height: 6px;
+            background: var(--primary-light);
+            border-radius: 50%;
+        }
+        .calendar-grid .day.has-goal {
+            border-bottom: 3px solid var(--watched);
+        }
+        .calendar-grid .day.other-month { opacity: 0.3; }
+        .calendar-grid .day .day-number {
+            font-weight: 600;
+        }
+        .calendar-grid .day .day-goal-indicator {
+            font-size: 0.5rem;
+            opacity: 0.6;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .day-plan-list {
+            margin-top: 16px;
+            background: var(--bg);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .day-plan-list ul { list-style: none; padding: 0; }
+        .day-plan-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .day-plan-list li button {
+            background: none;
+            border: none;
+            color: var(--primary-light);
+            cursor: pointer;
+        }
+
+        /* ===== Прогресс и статистика ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            padding: 18px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+        .stat-card .value { font-size: 2rem; font-weight: 700; color: var(--primary-light); }
+        .stat-card .label { font-size: 0.8rem; opacity: 0.7; }
+
+        .xp-bar {
+            background: var(--card);
+            border-radius: 40px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+        .xp-bar .progress {
+            background: var(--bg);
+            border-radius: 20px;
+            height: 12px;
+            overflow: hidden;
+            margin: 6px 0;
+        }
+        .xp-bar .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            transition: width 0.4s;
+        }
+        .badge-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .badge {
+            background: var(--card);
+            padding: 6px 16px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+        .badge.unlocked { opacity: 1; filter: none; border-color: var(--primary-light); }
+
+        .chart {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            align-items: flex-end;
+            height: 120px;
+            margin: 20px 0;
+        }
+        .chart-bar {
+            flex: 1;
+            max-width: 40px;
+            background: var(--primary-light);
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            transition: height 0.3s;
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text);
+        }
+
+        /* ===== Модалки ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 90%;
+            width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .modal select, .modal textarea, .modal input {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .modal .btn { margin-top: 8px; }
+
+        /* ===== Footer ===== */
+        .footer {
+            text-align: center;
+            padding: 20px 0 10px;
+            border-top: 1px solid var(--border);
+            margin-top: 30px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 640px) {
+            .header { flex-direction: column; align-items: stretch; }
+            .tabs { overflow-x: auto; flex-wrap: nowrap; }
+            .tab-btn { padding: 8px 14px; font-size: 0.8rem; white-space: nowrap; }
+            .lesson-grid { grid-template-columns: 1fr; }
+            .modal { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+<div class="app" id="app">
+    <header class="header">
+        <div class="logo">Физ<span>Компас</span></div>
+        <div class="header-actions">
+            <button class="btn" id="themeToggle"><i class="fas fa-moon"></i> Тема</button>
+            <button class="btn" id="exportBtn"><i class="fas fa-download"></i> Экспорт</button>
+            <button class="btn" id="importBtn"><i class="fas fa-upload"></i> Импорт</button>
+            <input type="file" id="importFile" accept=".json" style="display:none;">
+        </div>
+    </header>
+
+    <div class="tabs" id="tabs">
+        <button class="tab-btn active" data-tab="lessons"><i class="fas fa-list"></i> Уроки</button>
+        <button class="tab-btn" data-tab="calendar"><i class="fas fa-calendar-alt"></i> Календарь</button>
+        <button class="tab-btn" data-tab="progress"><i class="fas fa-chart-line"></i> Прогресс</button>
+        <button class="tab-btn" data-tab="achievements"><i class="fas fa-trophy"></i> Достижения</button>
+        <button class="tab-btn" data-tab="stats"><i class="fas fa-chart-pie"></i> Статистика</button>
+        <button class="tab-btn" data-tab="owner"><i class="fas fa-user"></i> Владелец</button>
+    </div>
+
+    <div class="tab-content active" id="tab-lessons">
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="Поиск по названию или номеру...">
+            <select id="sectionFilter"><option value="all">Все разделы</option></select>
+            <select id="statusFilter">
+                <option value="all">Все статусы</option>
+                <option value="new">Новый</option>
+                <option value="watched">Просмотрен</option>
+                <option value="completed">Пройден</option>
+            </select>
+            <button class="btn" id="randomLessonBtn"><i class="fas fa-random"></i> Случайный</button>
+        </div>
+        <div class="lesson-grid" id="lessonGrid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-calendar">
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <button class="btn" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+                <span id="calendarMonthYear"></span>
+                <button class="btn" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+            <div class="day-plan-list" id="dayPlanList"><p>Выберите день для просмотра плана</p></div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-progress">
+        <div class="stats-grid" id="progressStats"></div>
+        <div class="xp-bar">
+            <div><span id="levelLabel">Новичок</span> · <span id="xpDisplay">0 XP</span></div>
+            <div class="progress"><div class="progress-fill" id="xpProgressFill"></div></div>
+            <div style="font-size:0.85rem; opacity:0.7;">До следующего уровня: <span id="xpToNext">100</span> XP</div>
+        </div>
+        <h3>Активность за 7 дней</h3>
+        <div class="chart" id="activityChart"></div>
+    </div>
+
+    <div class="tab-content" id="tab-achievements">
+        <div class="badge-grid" id="badgeGrid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-stats">
+        <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-owner">
+        <div style="background: var(--card); padding: 30px; border-radius: 12px; box-shadow: var(--shadow); text-align: center; font-size: 1.5rem;">
+            <p><strong>Агафонов Ратмир</strong></p>
+            <p>группа: ПТПИТ 25СТЭ1</p>
+        </div>
+    </div>
+
+    <!-- Модалка для планирования урока -->
+    <div class="modal-overlay" id="planModal">
+        <div class="modal">
+            <h3 id="planModalTitle">Запланировать урок</h3>
+            <select id="planModalLessonSelect"></select>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <button class="btn" id="planModalSaveBtn">Сохранить</button>
+                <button class="btn" id="planModalCloseBtn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка для цели дня -->
+    <div class="modal-overlay" id="goalModal">
+        <div class="modal">
+            <h3 id="goalModalTitle">Цель на день</h3>
+            <input type="date" id="goalDateInput">
+            <textarea id="goalTextInput" placeholder="Напишите вашу цель на этот день..." rows="3"></textarea>
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <button class="btn" id="goalModalSaveBtn">Сохранить</button>
+                <button class="btn" id="goalModalCloseBtn">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        При поддержке бурмалды))
+    </footer>
+</div>
+
+<script>
+// ================================================================
+// 1. ПОЛНЫЙ МАССИВ УРОКОВ (все 483)
+// ================================================================
+const rawLessons = `
+1|XqCNajiaW3U|Урок 1. Физические величины и их измерение
+2|AlKy1Oc0x-U|Урок 2. Точность физических величин
+3|PmAOjwABf-M|Урок 3. Погрешность прямых измерений
+4|n8IgntrRc2s|Урок 4. Погрешность косвенных измерений
+5|mrBLA93wZb4|Урок 5. Вычисление случайной погрешности
+6|ImtkDBPOYAU|Урок 6. Задачи на вычисление погрешностей
+7|eZy2wp5XINY|Урок 7. Механическое движение. Основные определения кинематики.
+8|4vqRWYugy2s|Урок 8. Векторные величины. Действия над векторами.
+9|I_u9Ut-g-q4|Урок 9. Проекции вектора на координатные оси
+10|gaF_rgLOt8w|Урок 10. Действия над проекциями вектора
+11|-PCNwv_NXag|Урок 11. Решение задач на действия с векторами
+12|uX2vilBO4tE|Урок 12. Равномерное прямолинейное движение
+13|kGAB_zwpcpc|Урок 13. Решение задач на РПД
+14|0Fv0B4hX3vw|Урок 14. Графическое описание РПД
+15|2KF6mkOQod0|Урок 15. Решение задач на графики движения
+16|yZbWFMURfB8|Урок 16. Решение задач на графики РПД (продолжение)
+17|02bCjoveWTI|Урок 17. Средняя скорость. Средняя путевая скорость.
+18|j8s5v2nwcAc|Урок 18. Решение задач на среднюю скорость
+19|gdUh6TNPTzk|Урок 19. Относительность движения. Формула сложения скоростей.
+20|0uA9wPaCNeU|Урок 20. Простейшие задачи на относительность движения
+21|RTJ8mECkabw|Урок 21. Решение задач на относительность движения (одномерный случай)
+22|P-e_tycQIpo|Урок 22. Решение задач на относительность движения (двумерный случай)
+23|oTcwY7yuBKo|Урок 23. Решение задач на относительность движения (высокий уровень)
+24|6VXvLh3AnUs|Урок 24. Мгновенная скорость. Равноускоренное движение. Ускорение
+25|9u2MuzHii7Y|Урок 25. График скорости РУД. Перемещение при РУД.
+26|KzKbFtjEuSc|Урок 26. Решение простейших задач на РУД
+27|rp-igVufp-U|Урок 27. Средняя скорость при РУД
+28|8jF4tQXTkVk|Урок 28. Решение задач на РУД (продолжение)
+29|a-0P_qya90Y|Урок 29. Связь перемещения при РУД с начальной и конечной скоростью
+30|WUi1qzoTQgM|Урок 30. Графическое представление РУД
+31|wNyut084dFs|Урок 31. Решение задач на графики РУД
+32|SzUDmyQVAhM|Урок 32. Решение задач на графики РУД (продолжение)
+33|zFwbpn_gp-A|Урок 33. Решение усложненных задач на РУД
+34|Io2Nq6f3HuQ|Урок 34. Свободное падение. Ускорение свободного падения
+35|d6eqXfoAD78|Урок 35. Решение задач на свободное падение
+36|kOBTqHhJCl4|Урок 36. Измерение ускорения стробоскопическим методом
+37|rscPxlPHTPU|Урок 37. Движение тела, брошенного под углом к горизонту (начало)
+38|A-D2C7eBtto|Урок 38. Движение тела,брошенного под углом к горизонту (окончание)
+39|BNS3SaZwJ7E|Урок 39. Простейшие задачи о движении тела, брошенного под углом к горизонту
+40|KDjPlBerBTU|Урок 40. Задачи на движение тела, брошенного под углом к горизонту (ч.1)
+41|6tzEobGRcAw|Урок 41. Задачи на движение тела, брошенного под углом к горизонту (ч.2)
+42|SGt0dMqyg3E|Урок 42. Консультация перед КР по РУД
+43|JKjXRD4ZmWg|Урок 43. Криволинейное движение. Равномерное движение по окружности. Центростремительное ускорение
+44|2m1Wwj5DEHc|Урок 44. Вращение твердого тела. Линейная и угловая скорость. Период и частота вращения.
+45|_fpwKSMGuRk|Урок 45. Простейшие задачи на криволинейное и вращательное движение
+46|TvN7Q_b3e1g|Урок 46. Задачи на криволинейное и вращательное движение
+47|-D_Ihv1hTR8|Урок 47. Неравномерное движение по окружности. Тангенциальное ускорение
+48|CsM8hKs1P9A|Урок 48. Задачи на неравномерное криволинейное движение
+49|djV47m_QA0Q|Урок 49. Вращение с постоянным угловым ускорением
+50|dBgRUGZChLM|Урок 50. Задачи на вращение с пост. угловым ускорением
+51|gLxCiIRWtuE|Урок 51. Первый закон Ньютона. Взаимодействие тел и их ускорение.
+52|XAsji3sgMg4|Урок 52. Масса и ее измерение. Сила. Второй закон Ньютона. Равнодействующая.
+53|HdMbxgjnEcc|Урок 53. Простейшие задачи на законы Ньютона
+54|OijNRhnYokY|Урок 54. Третий закон Ньютона. Принцип относительности Галилея
+55|K4T1sjFFgUM|Урок 55. Задачи на законы Ньютона
+56|BrRGq6omXss|Урок 56. Алгоритм решения задач динамики
+57|bFOu8-UGJGw|Урок 57. Решение задач динамики
+58|5JBDAAhFctI|Урок 58. Сила упругости. Закон Гука
+59|xKI6ybF7o_k|Урок 59. Задачи на закон Гука
+60|TQUIIGeozbQ|Урок 60. Закон всемирного тяготения. Гравитационная постоянная
+61|urI0IZtpxkY|Урок 61. Задачи на закон всемирного тяготения
+62|vWs4MIZTEwM|Урок 62. Сила тяжести и вес тела. Невесомость.
+63|b3mA6iMGAQI|Урок 63. Перегрузка. Вес тела на полюсе и на экваторе
+64|xQOns-yfmJI|Урок 64. Искусственные спутники Земли. Первая космическая скорость. Геостационарная орбита
+65|CcklMu9ZXJk|Урок 65. Движение планет. Законы Кеплера
+66|WCYKWVWMT-U|Урок 66. Задачи на вычисление веса тела
+67|zi3omRrfurg|Урок 67. Сила трения
+68|_dTUdJfeixk|Урок 68. Явления в неинерциальных системах отсчета
+69|FixGw1dJYEc|Урок 69. Консультация перед зачетом
+70|d348jsnU5i8|Урок 70. Виды равновесия. Условие равновесия тела при отсутствии вращения.
+71|cJyjhKxAL00|Урок 71. Простейшие задачи на правило сил
+72|3ApgcyBkVM4|Урок 72. Задачи на правило сил
+73|kW09icZFsNQ|Урок 73. Усложненные задачи на правило сил
+74|purUB9N72ig|Урок 74. Равновесие тела с закрепленной осью вращения
+75|EYPJObSgRvw|Урок 75. Следствия из условий равновесия тела
+76|b4WPOPewBdk|Урок 76. Задачи на правило моментов
+77|06XpQMr3wio|Урок 77. Решение задач статики (часть 1)
+78|Ghr3E8ngq-g|Урок 78. Решение задач статики (часть 2)
+79|6OyCV7jodYA|Урок 79. Центр масс тела и методы определения его положения
+80|vV_LbiTiZlM|Урок 80. Определение положения центра масс тела
+81|BD_-qrhXH5k|Урок 81. Устойчивость тел в присутствии силы тяжести
+82|Cm0H1xr7mlw|Урок 82. Равнодействующая параллельных сил. Пара сил
+83|x4A7VBWSnpM|Урок 83. Комбинированные задачи статики
+84|Hce7KnLjRtk|Урок 84. Теорема о движении центра масс
+85|YkN_dFvKC7g|Урок 85. Движение связанных тел (ч.1)
+86|aV7DaVkgCwM|Урок 86. Движение связанных тел (ч.2)
+87|1fxLQ-YtkeA|Урок 87. Движение по наклонной плоскости (ч.1)
+88|y7MdWlL5ho4|Урок 88. Движение по наклонной плоскости (ч.2)
+89|sXIRs9tlj0s|Урок 89. Движение по окружности (ч.1)
+90|az1K1oWOeC8|Урок 90. Движение по окружности (ч.2)
+91|i44MdkFoyjM|Урок 91. Комбинированные задачи динамики (ч.1)
+92|QtksGWXOTkk|Урок 92. Комбинированные задачи динамики (ч.2)
+93|HZzchORFgNE|Урок 93. Основное уравнение динамики вращательного движения
+94|RY4xL_1I6m0|Урок 94. Вычисление моментов инерции тел
+95|2sS2dLsYuzM|Урок 95. Теорема о взаимно перпендикулярных осях
+96|OS1vP2ybw4I|Урок 96. Простейшие задачи на вращение твердого тела
+97|dck0WkE16pg|Урок 97. Теорема Штейнера
+98|xRlvq1PAu2w|Урок 98. Задачи на вычисление моментов инерции (ч.1)
+99|dYQsdPWnEXo|Урок 99. Задачи на вычисление моментов инерции (ч.2)
+100|NwZc_X7-lng|Урок 100. Задачи на вращение твердого тела (ч.1)
+`;
+
+const videoIds101_483 = [
+"tFypPlkUMdU","j4vhh5L90WU","MIz8dsjAlCQ","Ev68eLx6RWA","-XPUqhgOVJU","MM_72FXE7oA","nB2XpQ2o_C4","PE1_PilfBnc","2Akxzq_fe1E","jVstXUpyOrU","_zr16Phd9Sk","5z4cf-ZTG_I","dJEAFOwOXSk","rPVKb_leXus","kRH0v9_wT-M","aggu45cT8vI","nTDiyo8fxQQ","0C9Ksk7bX9s","L-YoH8-smK4","j1z_LnFKRvg","tcQTw53s5DE","dPS3_jE3u2k","pkbCHu7zoJk","7QFnF4GWTH4","RULuvEZehEk","IfFSAuGnhKs","f3CAdlAH7Ag","h86255t-N3U","jkWksLhmW1g","yoN7Gv76peM","ocVF0QrTRzo","Aw6XuL_xywY","nz23fuDr2lE","qiwK96vv62s","35sCV8VOE8c","POXjCXLH458","YDA5XerGFw0","olAUvajJ3-s","pn_RnNGKsKU","Mf70v5NlMMo","xFtZhMjp8JY","lZXHa4QpDnk","yHB1aNptsL8","Xn1V5PpWN2M","c_CnPH8vVBE","ZBJrZGI5RDw","S-gPuzj-tyw","mD1YBgdkoN8","5Q-K7vJBN4I","DJ-KoNlZap4","bxkc47-Up3U","tYFXMbFyano","qyo7Tle5BnQ","8oLOWm_1NIg","fOBmow41GaQ","-MXNLgVCm8w","tV9KMc3Hje8","iHOGVBCgyvs","snMmRywFRoA","oewLPyOiNdA","KhFfQ3V-8Xc","KNZMn9d99uw","96J3yyfji9Y","UQQMmitaQck","avGNkJ6nMiE","-9mmb6gjVwE","RcVnXuQIBuE","RQHikNcVIE0","MIIh_G-j7Kk","xwnaNIelrQU","0YhM7n32mhg","gwys7rQVC6M","3gJAh6wiVX4","2U0835QocqM","_oNkT_Mga8c","6AB11ExHF0I","eDNqyQ9fWkw","AMFRpRQnMRM","K_xr7766H-0","BWP8szMAnPk","n2ZisHaNq-0","UdgcUzutflQ","A9ojh67tRmI","4cQaiWfZWFI","NAda_KQN--0","FBzGdVW2nr0","j6l1NMlWZD0","aGSnoPNsIGc","trjezk4mAYY","Ou_Bq-eCInI","-jmeWeP3PjE","CYRz8_YRjVM","YELCLDEV6qs","YCwmDvvd-xQ","uE-YdiKz45Y","xwoXDoDy98k","OWxJI0AC1RY","LFJQ9dtG5Yw","H5Fhf1G6W_c","gnVZmLb5SLI","9Z3WfsoCRGM","gnouI6gUpJY","TZ3sL45ryFw","DxR0MW_vNRo","kdHT_EEy53w","lDB9aFp6TLI","SbTzPITAavY","jJw-iVuZV2g","Wy5oWYEzYBs","szib0JlDnnA","FJtV3uXPCDA","CdXG-rrB5tU","MNIpF7BZEuI","6kJ535nZI94","KaRNf9eGHj4","cq1GKwZn3fk","vG27WFJHwAg","oMfwDl8yONc","OQ9oZa93LlI","ovIqLt4-fB0","HaT6uR5A4vs","TV_gE1uHQfY","xCzoDH-lGHE","ykw5NFywYuw","WZtRGx5FGuI","hvO47tPdMXM","iLzth3xKOis","0R_IgLCjer8","zEtA8XHuPIc","ijDWlzlVpcI","GJnv-GWRk3k","jwUmAv_9rJg","Xj5W5fCHgt0","8nVW5j6yxG4","8UWrayEWdfw","bPQtfrWykhY","JcPswqg1YHk","aI_e6Rlmcek","0WhyFmmZXQs","80D7a32Ho34","H0gr5zCIro8","Z0iPDPi4P2s","HeduQ8H-clI","7Ss7IQB0wyA","C9qUI9qSBCY","68Nktnw2Egg","PBI9RxyDpi8","_jeA_5fA7JU","XvlVPf43lzo","YJbkhMS40b4","KAh8itbUGS4","5fdISDOfs3Y","xFJS75TsGIc","yP1V4Zzjl6Q","_DcC2SwxNNk","UmO_sWGaOhY","Q2jTuMNO4wo","cDZIEV2WVIQ","cB73bVe709c","zE4fyushWHI","jT5b9oOzBHE","xi0n78bJU2o","-dGngUpT2xA","5Tk8IevoF6E","SYtHJTUgX9M","PQKtqAHPWZQ","mZIIorOKO7c","_DahyfXa5oE","TD23HdWNT30","-ngxcW7VMLY","mgipYDDZeLg","5yISVyp3MGU","tCV4mij_zKI","WG4hZcCdIKU","rTa0GEGCsDI","7IUpOAsKKvI","6juVVK8n_5c","VtS40_i1bmw","ZFr1KcBiSBA","vUG45Lfo170","OW9NaY6Dy7w","N6t0CLFCugo","FAqvdIPttjo","MWAd23ODgGM","xb5d4GlL-us","e9aV3koSeJE","8pluF9EEEgc","aoXBEqTVggA","E1JKhaMLUQY","lWOtyBtz_Sk","Qn_M4vBEZgs","8Vnj4pywDks","UxLtt7eGSYo","ToLtYy5ITJ0","TQcCV6lIvDo","ARiBhBYZSos","C1u0DRVsYH8","dbbfYBmaTqs","2fKI0Cg6qgA","wcI_D1djZBA","RizCcEoxmjc","NZlfo7SXf9U","sSZ38BQ5dbk","3k_WRTr1yYE","pYGib43HU88","H59Qi5_mVYA","3Oksejm9Nuw","kBolzQc4j3c","5tdfWn075SQ","cWNrVpfo7HU","rcfr38l6Udc","jr30XVEUcbQ","ULKujGxSnfQ","BNVNomHfYR4","devt7u9CFRo","t_E2wdYWx2A","DG2Yx2AqPQM","9p_hMsd0BGw","w8CbhNFdadQ","7bG4LlTiBX0","eZoqes45Udw","YkPEFpfEtSI","inTrnnyyCr0","cclnlfxKCVs","Kc2-znE9-wY","ya06QBPiotw","cRIxnx9SfMg","A_-OaN-Xadg","KCCpwcCu0P0","-gtOpvPzGjw","LADAgtW9XwQ","BI8XTxJBZIw","Vh9q03WXM7I","ZigUeOzLv1U","LfuF0xr_waY","yah34pYiBv8","vnu7RGXC0DM","KTg8E54rt0w","p3C9eMCOVzc","5wU_VqWGzXw","hYw6bSavjHM","SDrZAmocwso","GpUR3z2bZKQ","yHQXB5eGllc","tNJDjGcEgVs","AHOOn7_KZNI","oxbqwP3F2q8","IQfZERp7oJo","XtJNJRWrQq4","CCGjZ35Xs7M","tls12mjFgtA","0W3-PSUDcR4","EZxVAFgdVg0","gHDpVJVch6Q","xtFhJH08ViY","ixLbTzf1NVE","ZZZA6FV0A3M","zhc6U_ntQFY","RUVaUEMpLkA","oaMT176g9eA","bna_f9UK4Oo","dlFJV6HCsCE","UtNtmbrojVI","bWLLFKdcKJ8","H59i1Vw85IY","IvJohBD9J14","Hrw1FlC4awA","jwKWrPYbkdc","1A_Het4Dp9o","bZl6G2eaGrI","jXQaiMptj-w","Y_YR6O3MrGg","81EbMuUOapQ","t4s_SQu4KUA","gXBGv9kXn98","GvFTMg3stuM","KoQKQg91VNE","uT1PtfwBIzc","IaKRDDtRB20","9cGl9i2ZlpM","3YWZAOweLB0","8g8CzZWI54w","fsZEwOY69Ss","b5uTFYWAhGE","8EysU8xTr6o","BC3Oi4zYF1s","I5YrsGFf8_k","fCcUIfkFBkA","2ThXaErEj3o","clVBUdGrH9g","LVziS9Fkrb4","df1npELwAiU","Tq8X0nu2RqM","OoR42yq4Lx4","DXp-mmvGWJs","3kBXw_w1lSg","_sLuh03AdW0","O4h_wTbmfjA","KFm5g4j6UmA","vwvDH9K5xkg","v7z-GZxtp4s","UuvWgJJKABg","lTRMfup4ULE","MymjdP5AA5U","4WLKAGXQgtI","G3nueSOCN18","lV4fFElb7_I","eA3RuDDSpN8","rqKGIjkBp2c","Iddik8WFeWo","aiCCTHqnVT8","ADfPLcyH27A","6LSiaeIC6m4","0MuRk7X-vIM","h_pAhgiCIvg","fgaAPStffJ0","gd9wQhAV0P4","ZCvgDuAOMiY","3aaVPXKi3Y4","gE3zO9FSDm0","-XcY7LSV6fw","fbaz6D6HcqU","1PK__XxPmmE","kUSrwDQqW7M","XroCN_XKWMc","jQeu7WV2jjU","8-ReNkeRBh0","U9-2r7dnKiU","mFr6vrkkbWk","4nj4jo3RqVE","USP_7rqjs9s","Iic0pqnfEHI","usb6c8MuoI0","zOM4h_Dt9_s","Qr4Yti-6G-8","yHYA8pcuuu8","Kqnkj29jMh0","vZslEoZKYKc","8qVLMHW5cbY","2pkfBLPUvYY","r2XJevElSHc","KWEoTNF5s70","1_ewt9HPvJU","M5RDFFm4wKo","_Oq8nho69IM","_4hPs4Opvd4","uGbiZ2pa2IM","qMDNHk7ijsA","1NbH5Y4Cqdo","i-tSwRv7HNo","uAG7aw6w_ks","bmSaYrOW1-0","oGhBARGmNM0","3Gkwl9imw7k","FgZ9wZ8tg7g","YI0I7ZvnF9w","kjJ3XA8kO9Y","vLqPFP2STRQ","yKKTJvIT3bA","ZtY8ekNp-7Q","-pvp7V1c47s","mFOA7CcUu0o","eq_UeRg5gGI","OlW22u3mPvM","K7FTtWuj0MQ","1gFmU_kutqI","tWUPw4TsVG8","u-tK_yUCs00","sAW1MxBsNYs","VyP7qBJDL80","4lveg8E5WX0","ONZMlYvsXuI","UCSTfBfN-5M","DrpDqSD8DJY","Vepua84SJOk","NKy1YXCv_YM","FG1VK_cSBSs","SBuCkMLBuoE","8fDnQO_spa4","6PlvTC3-ObE","9S3U6GzjolM","i3dUDFOzvCY","bWEdM5Z3erk"
+];
+
+const lessonsData = [];
+rawLessons.trim().split('\n').forEach(line => {
+    const parts = line.split('|');
+    if (parts.length === 3) {
+        lessonsData.push({ id: parseInt(parts[0]), videoId: parts[1], title: parts[2] });
+    }
+});
+for (let i = 0; i < videoIds101_483.length; i++) {
+    const id = 101 + i;
+    lessonsData.push({ id, videoId: videoIds101_483[i], title: `Урок ${id}. (видео)` });
+}
+lessonsData.sort((a,b) => a.id - b.id);
+
+// ================================================================
+// 2. СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ================================================================
+const STORAGE_KEY = 'fizkompas_data';
+
+function getDefaultState() {
+    return {
+        progress: {},     // { lessonId: 'new'|'watched'|'completed' }
+        xp: 0,
+        plans: {},        // { 'YYYY-MM-DD': [lessonId, ...] }
+        notes: {},        // { lessonId: 'текст' }
+        activity: {},     // { 'YYYY-MM-DD': count }
+        dailyGoals: {}    // { 'YYYY-MM-DD': 'текст цели' }
+    };
+}
+
+function loadState() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+        try {
+            const data = JSON.parse(raw);
+            if (!data.progress) data.progress = {};
+            if (!data.xp) data.xp = 0;
+            if (!data.plans) data.plans = {};
+            if (!data.notes) data.notes = {};
+            if (!data.activity) data.activity = {};
+            if (!data.dailyGoals) data.dailyGoals = {};
+            return data;
+        } catch(e) {}
+    }
+    return getDefaultState();
+}
+
+function saveState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+// ================================================================
+// 3. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ================================================================
+function getStatus(lessonId) {
+    return state.progress[lessonId] || 'new';
+}
+
+function setStatus(lessonId, status, bonus = false) {
+    const old = getStatus(lessonId);
+    if (old === status) return;
+    state.progress[lessonId] = status;
+    if (status === 'watched') state.xp += 5;
+    else if (status === 'completed') {
+        state.xp += 10;
+        if (bonus) state.xp += 3;
+        const today = new Date().toISOString().slice(0,10);
+        state.activity[today] = (state.activity[today] || 0) + 1;
+    }
+    saveState(state);
+    renderAll();
+}
+
+function getSection(lessonId) {
+    if (lessonId <= 6) return 'Измерения';
+    if (lessonId <= 50) return 'Кинематика';
+    if (lessonId <= 100) return 'Динамика';
+    if (lessonId <= 138) return 'МКТ и термодинамика';
+    if (lessonId <= 179) return 'МКТ и термодинамика (продолжение)';
+    if (lessonId <= 245) return 'Электростатика';
+    if (lessonId <= 269) return 'Постоянный ток';
+    if (lessonId <= 293) return 'Магнетизм и индукция';
+    if (lessonId <= 350) return 'Колебания и волны';
+    if (lessonId <= 427) return 'Оптика';
+    if (lessonId <= 463) return 'Квантовая физика';
+    if (lessonId <= 474) return 'Ядерная физика';
+    return 'Лабораторные работы';
+}
+
+function getLevel(xp) {
+    if (xp < 100) return { name: 'Новичок', level: 1, next: 100 };
+    if (xp < 300) return { name: 'Исследователь', level: 2, next: 300 };
+    if (xp < 600) return { name: 'Физик-экспериментатор', level: 3, next: 600 };
+    if (xp < 1000) return { name: 'Теоретик', level: 4, next: 1000 };
+    return { name: 'Мастер физики', level: 5, next: Infinity };
+}
+
+// ================================================================
+// 4. РЕНДЕРИНГ
+// ================================================================
+function renderLessons() {
+    const grid = document.getElementById('lessonGrid');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const section = document.getElementById('sectionFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    let filtered = lessonsData.filter(lesson => {
+        const title = lesson.title.toLowerCase();
+        const idStr = lesson.id.toString();
+        const matchSearch = title.includes(search) || idStr.includes(search);
+        const matchSection = section === 'all' || getSection(lesson.id) === section;
+        const matchStatus = statusFilter === 'all' || getStatus(lesson.id) === statusFilter;
+        return matchSearch && matchSection && matchStatus;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<p style="text-align:center; padding:40px;">Уроки не найдены</p>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(lesson => {
+        const status = getStatus(lesson.id);
+        const statusClass = status === 'completed' ? 'completed' : status === 'watched' ? 'watched' : '';
+        const statusLabel = status === 'completed' ? 'Пройден' : status === 'watched' ? 'Просмотрен' : 'Новый';
+        const thumbUrl = `https://img.youtube.com/vi/${lesson.videoId}/hqdefault.jpg`;
+        return `
+            <div class="lesson-card" style="border-left-color: ${status === 'completed' ? 'var(--completed)' : status === 'watched' ? 'var(--watched)' : 'var(--new)'};">
+                <div class="meta">
+                    <span>#${lesson.id}</span>
+                    <span class="status-badge ${statusClass}">${statusLabel}</span>
+                </div>
+                <div class="title">${lesson.title}</div>
+                <div class="lesson-thumb" onclick="openVideo('${lesson.videoId}')">
+                    <img src="${thumbUrl}" alt="Превью" loading="lazy">
+                    <div class="play-icon"><i class="fas fa-play-circle"></i></div>
+                </div>
+                <div class="actions">
+                    <button onclick="openVideo('${lesson.videoId}')"><i class="fas fa-play"></i> Смотреть</button>
+                    ${status !== 'watched' && status !== 'completed' ? `<button onclick="setStatus(${lesson.id}, 'watched')"><i class="fas fa-eye"></i> Просмотрен</button>` : ''}
+                    ${status !== 'completed' ? `<button onclick="setStatus(${lesson.id}, 'completed', false)"><i class="fas fa-check"></i> Пройден</button>` : ''}
+                    <button onclick="openPlanModal(${lesson.id})"><i class="fas fa-calendar-plus"></i> Запланировать</button>
+                    <button onclick="openNoteModal(${lesson.id})"><i class="fas fa-pen"></i> Заметка</button>
+                </div>
+                ${state.notes[lesson.id] ? `<div style="font-size:0.8rem; opacity:0.6; margin-top:4px;">📝 ${state.notes[lesson.id]}</div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== Функция открытия видео (открывает в новой вкладке) =====
+function openVideo(videoId) {
+    window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+}
+
+// --- Календарь ---
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+
+function renderCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    const monthYear = document.getElementById('calendarMonthYear');
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const today = new Date().toISOString().slice(0,10);
+
+    monthYear.textContent = `${new Date(currentYear, currentMonth).toLocaleString('ru', { month: 'long', year: 'numeric' })}`;
+
+    let html = '';
+    const weekdays = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    let startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+    for (let i = 0; i < 7; i++) {
+        html += `<div style="text-align:center; font-weight:600; font-size:0.8rem;">${weekdays[i]}</div>`;
+    }
+    for (let i = 0; i < startOffset; i++) {
+        html += `<div class="day other-month"></div>`;
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const hasPlan = state.plans[dateStr] && state.plans[dateStr].length > 0;
+        const hasGoal = state.dailyGoals[dateStr] && state.dailyGoals[dateStr].trim() !== '';
+        const isToday = dateStr === today;
+        const goalShort = hasGoal ? state.dailyGoals[dateStr].slice(0, 12) : '';
+        html += `<div class="day ${hasPlan ? 'has-plan' : ''} ${hasGoal ? 'has-goal' : ''} ${isToday ? 'day-today' : ''}" onclick="openDayModal('${dateStr}')">
+            <span class="day-number">${d}</span>
+            ${hasGoal ? `<span class="day-goal-indicator">${goalShort}${state.dailyGoals[dateStr].length > 12 ? '…' : ''}</span>` : ''}
+        </div>`;
+    }
+
+    grid.innerHTML = html;
+    const todayEl = grid.querySelector('.day-today');
+    if (todayEl) todayEl.style.border = '2px solid var(--primary-light)';
+
+    selectDay(today);
+}
+
+function openDayModal(dateStr) {
+    document.getElementById('goalDateInput').value = dateStr;
+    document.getElementById('goalTextInput').value = state.dailyGoals[dateStr] || '';
+    document.getElementById('goalModalTitle').textContent = `Цель на ${dateStr}`;
+    document.getElementById('goalModal').classList.add('open');
+}
+
+function selectDay(dateStr) {
+    const list = document.getElementById('dayPlanList');
+    const plans = state.plans[dateStr] || [];
+    const goal = state.dailyGoals[dateStr] || '';
+    let html = `<h4>План на ${dateStr}</h4>`;
+    if (goal) html += `<p><strong>Цель дня:</strong> ${goal}</p>`;
+    if (plans.length === 0) {
+        html += `<p>Нет запланированных уроков</p>`;
+    } else {
+        html += `<ul>` + plans.map(id => {
+            const lesson = lessonsData.find(l => l.id === id);
+            if (!lesson) return '';
+            return `<li>${lesson.title} <button onclick="completePlanned(${id}, '${dateStr}')"><i class="fas fa-check"></i> Сделано</button></li>`;
+        }).join('') + `</ul>`;
+    }
+    list.innerHTML = html;
+}
+
+function completePlanned(lessonId, dateStr) {
+    state.plans[dateStr] = (state.plans[dateStr] || []).filter(id => id !== lessonId);
+    setStatus(lessonId, 'completed', true);
+    saveState(state);
+    renderAll();
+}
+
+function openPlanModal(lessonId) {
+    const overlay = document.getElementById('planModal');
+    const select = document.getElementById('planModalLessonSelect');
+    select.innerHTML = lessonsData.map(l => `<option value="${l.id}" ${l.id === lessonId ? 'selected' : ''}>${l.id}. ${l.title}</option>`).join('');
+    document.getElementById('planModalTitle').textContent = 'Запланировать урок';
+    overlay.classList.add('open');
+    document.getElementById('planModalSaveBtn').onclick = function() {
+        const selectedId = parseInt(select.value);
+        const dateStr = prompt('Введите дату (ГГГГ-ММ-ДД):', new Date().toISOString().slice(0,10));
+        if (!dateStr) return;
+        if (!state.plans[dateStr]) state.plans[dateStr] = [];
+        if (!state.plans[dateStr].includes(selectedId)) {
+            state.plans[dateStr].push(selectedId);
+            saveState(state);
+            renderAll();
+        }
+        overlay.classList.remove('open');
+    };
+    document.getElementById('planModalCloseBtn').onclick = function() {
+        overlay.classList.remove('open');
+    };
+}
+
+function openNoteModal(lessonId) {
+    const note = state.notes[lessonId] || '';
+    const newNote = prompt('Введите заметку для урока:', note);
+    if (newNote !== null) {
+        if (newNote.trim() === '') delete state.notes[lessonId];
+        else state.notes[lessonId] = newNote.trim();
+        saveState(state);
+        renderAll();
+    }
+}
+
+// --- Прогресс ---
+function renderProgress() {
+    const total = lessonsData.length;
+    const completed = lessonsData.filter(l => getStatus(l.id) === 'completed').length;
+    const percent = total ? Math.round(completed / total * 100) : 0;
+
+    document.getElementById('progressStats').innerHTML = `
+        <div class="stat-card"><div class="value">${completed}</div><div class="label">Пройдено</div></div>
+        <div class="stat-card"><div class="value">${total - completed}</div><div class="label">Осталось</div></div>
+        <div class="stat-card"><div class="value">${percent}%</div><div class="label">Выполнено</div></div>
+    `;
+
+    const xp = state.xp;
+    const level = getLevel(xp);
+    document.getElementById('levelLabel').textContent = level.name;
+    document.getElementById('xpDisplay').textContent = `${xp} XP`;
+    const next = level.next === Infinity ? 0 : level.next - xp;
+    document.getElementById('xpToNext').textContent = next > 0 ? next : 0;
+    const progress = level.next === Infinity ? 100 : Math.min(100, (xp / level.next) * 100);
+    document.getElementById('xpProgressFill').style.width = progress + '%';
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0,10);
+        days.push({ key, count: state.activity[key] || 0 });
+    }
+    const maxCount = Math.max(1, ...days.map(d => d.count));
+    const chart = document.getElementById('activityChart');
+    chart.innerHTML = days.map(d => `
+        <div style="display:flex; flex-direction:column; align-items:center; flex:1;">
+            <div class="chart-bar" style="height: ${(d.count / maxCount) * 100}%;"></div>
+            <span style="font-size:0.6rem;">${d.key.slice(5)}</span>
+            <span style="font-size:0.6rem;">${d.count}</span>
+        </div>
+    `).join('');
+}
+
+// --- Достижения ---
+function renderAchievements() {
+    const totalCompleted = lessonsData.filter(l => getStatus(l.id) === 'completed').length;
+    const sections = {};
+    lessonsData.forEach(l => {
+        const sec = getSection(l.id);
+        if (!sections[sec]) sections[sec] = { total: 0, done: 0 };
+        sections[sec].total++;
+        if (getStatus(l.id) === 'completed') sections[sec].done++;
+    });
+
+    const badges = [
+        { id: 'first', label: 'Первые шаги', condition: totalCompleted >= 5 },
+        { id: 'persistent', label: 'Настойчивый', condition: totalCompleted >= 50 },
+        { id: 'pro', label: 'Профи', condition: totalCompleted >= 100 },
+        { id: 'mechanic', label: 'Механик', condition: sections['Динамика'] && sections['Динамика'].done === sections['Динамика'].total },
+        { id: 'electric', label: 'Электрик', condition: sections['Электростатика'] && sections['Электростатика'].done === sections['Электростатика'].total },
+        { id: 'optic', label: 'Оптик', condition: sections['Оптика'] && sections['Оптика'].done === sections['Оптика'].total },
+        { id: 'quantum', label: 'Квантовый скачок', condition: sections['Квантовая физика'] && sections['Квантовая физика'].done === sections['Квантовая физика'].total },
+        { id: 'marathon', label: 'Марафонец', condition: Object.values(state.activity).some(v => v >= 10) },
+        { id: 'streak', label: 'Стрелок', condition: (() => {
+            let streak = 0;
+            for (let i = 0; i < 7; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = d.toISOString().slice(0,10);
+                if ((state.activity[key] || 0) >= 2) streak++;
+                else break;
+            }
+            return streak >= 7;
+        })() },
+    ];
+
+    const grid = document.getElementById('badgeGrid');
+    grid.innerHTML = badges.map(b => `
+        <div class="badge ${b.condition ? 'unlocked' : ''}">
+            <i class="fas ${b.condition ? 'fa-check-circle' : 'fa-lock'}" style="color: ${b.condition ? 'var(--completed)' : 'var(--border)'};"></i>
+            ${b.label}
+        </div>
+    `).join('');
+}
+
+// --- Статистика ---
+function renderStats() {
+    const total = lessonsData.length;
+    const completed = lessonsData.filter(l => getStatus(l.id) === 'completed').length;
+    const percent = total ? Math.round(completed / total * 100) : 0;
+    const days = Object.keys(state.activity).length;
+    const avg = days > 0 ? (completed / days).toFixed(1) : 0;
+    const remaining = total - completed;
+    const forecast = avg > 0 ? Math.ceil(remaining / avg) : '—';
+
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="value">${total}</div><div class="label">Всего уроков</div></div>
+        <div class="stat-card"><div class="value">${completed}</div><div class="label">Пройдено</div></div>
+        <div class="stat-card"><div class="value">${percent}%</div><div class="label">Выполнено</div></div>
+        <div class="stat-card"><div class="value">${avg}</div><div class="label">Средняя скорость (ур./день)</div></div>
+        <div class="stat-card"><div class="value">${forecast}</div><div class="label">Прогноз окончания (дней)</div></div>
+    `;
+}
+
+function renderAll() {
+    renderLessons();
+    renderCalendar();
+    renderProgress();
+    renderAchievements();
+    renderStats();
+    // Обновить фильтры разделов
+    const sectionSelect = document.getElementById('sectionFilter');
+    if (sectionSelect.options.length <= 1) {
+        const sections = [...new Set(lessonsData.map(l => getSection(l.id)))];
+        sections.forEach(sec => {
+            const opt = document.createElement('option');
+            opt.value = sec;
+            opt.textContent = sec;
+            sectionSelect.appendChild(opt);
+        });
+    }
+}
+
+// ================================================================
+// 5. СОБЫТИЯ И ИНИЦИАЛИЗАЦИЯ
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            if (this.dataset.tab === 'calendar') renderCalendar();
+            if (this.dataset.tab === 'progress') renderProgress();
+            if (this.dataset.tab === 'achievements') renderAchievements();
+            if (this.dataset.tab === 'stats') renderStats();
+        });
+    });
+
+    // Theme
+    document.getElementById('themeToggle').addEventListener('click', function() {
+        const current = document.documentElement.getAttribute('data-theme');
+        const next = current === 'dark' ? '' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        this.innerHTML = next === 'dark' ? '<i class="fas fa-sun"></i> Светлая' : '<i class="fas fa-moon"></i> Тема';
+    });
+
+    // Search & filters
+    document.getElementById('searchInput').addEventListener('input', renderLessons);
+    document.getElementById('sectionFilter').addEventListener('change', renderLessons);
+    document.getElementById('statusFilter').addEventListener('change', renderLessons);
+
+    // Random lesson
+    document.getElementById('randomLessonBtn').addEventListener('click', function() {
+        const filtered = lessonsData.filter(l => getStatus(l.id) !== 'completed');
+        if (filtered.length === 0) { alert('Все уроки пройдены!'); return; }
+        const random = filtered[Math.floor(Math.random() * filtered.length)];
+        openVideo(random.videoId);
+    });
+
+    // Calendar navigation
+    document.getElementById('prevMonth').addEventListener('click', function() {
+        currentMonth--;
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+        renderCalendar();
+    });
+    document.getElementById('nextMonth').addEventListener('click', function() {
+        currentMonth++;
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+        renderCalendar();
+    });
+
+    // Goal modal
+    document.getElementById('goalModalSaveBtn').addEventListener('click', function() {
+        const date = document.getElementById('goalDateInput').value;
+        const text = document.getElementById('goalTextInput').value.trim();
+        if (!date) return;
+        if (text === '') delete state.dailyGoals[date];
+        else state.dailyGoals[date] = text;
+        saveState(state);
+        renderAll();
+        document.getElementById('goalModal').classList.remove('open');
+    });
+    document.getElementById('goalModalCloseBtn').addEventListener('click', function() {
+        document.getElementById('goalModal').classList.remove('open');
+    });
+
+    // Export/Import
+    document.getElementById('exportBtn').addEventListener('click', function() {
+        const data = JSON.stringify(state, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'fizkompas_backup.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+    document.getElementById('importBtn').addEventListener('click', function() {
+        document.getElementById('importFile').click();
+    });
+    document.getElementById('importFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                const data = JSON.parse(ev.target.result);
+                state = data;
+                saveState(state);
+                renderAll();
+                alert('Данные импортированы!');
+            } catch(err) {
+                alert('Ошибка импорта');
+            }
+        };
+        reader.readAsText(file);
+        this.value = '';
+    });
+
+    renderAll();
+});
+
+// Глобальные функции для onclick
+window.setStatus = setStatus;
+window.openVideo = openVideo;
+window.openPlanModal = openPlanModal;
+window.openNoteModal = openNoteModal;
+window.openDayModal = openDayModal;
+window.selectDay = selectDay;
+window.completePlanned = completePlanned;
+</script>
+</body>
+</html>
